@@ -3,25 +3,24 @@ import json
 import query
 from bs4 import BeautifulSoup
 
-def findAnimes2(anime_Name):
-    anime_Name=anime_Name.replace(' ','+')
+def get_Links(anime_Name):
+    anime_Name = anime_Name.replace(' ', '+')
+    sites = ['https://subanimes.cc/', 'https://betteranime.net/']
+    urls = []
+    result = []
 
-    sites=['https://subanimes.cc/','https://betteranime.net/']
-    urls=[]
-    result=[]
-    result2=[]
     for site in sites:
-        if site=='https://betteranime.net/':
-            url=site+'pesquisa?titulo='+anime_Name+'&searchTerm='+anime_Name
+        if site == 'https://betteranime.net/':
+            url = site + 'pesquisa?titulo=' + anime_Name + '&searchTerm=' + anime_Name
         else:
-            url=site+'?s='+anime_Name
+            url = site + '?s=' + anime_Name
 
         urls.append(url)
     for url in urls:
-        req=r.get(url)
-        content=req.content
+        req = r.get(url)
+        content = req.content
         soup = BeautifulSoup(content, 'html.parser')
-        for elem in soup.findAll('a',href=True):
+        for elem in soup.findAll('a', href=True):
             if 'https://subanimes.cc/anime/' in elem['href']:
                 result.append(elem['href'])
 
@@ -40,7 +39,7 @@ def checkLinks(links,names):
     else:
         english=romaji
 
-    streaming_Names=['netflix','hbomax','amazon']
+    streaming_Names=['netflix','hbomax','amazon','crunchyroll']
     streamings=[]
     for elem in links:
         url=elem['url']
@@ -56,11 +55,10 @@ def checkLinks(links,names):
             result=r.get(url)
             content=result.content
             soup=BeautifulSoup(content,'html.parser')
-            title=str(soup.title)
-            len_Title=len(title)-15
+            title=str(soup.title.string)
             result.close()
             if name=='netflix' or name=='hbomax':
-                if len_Title>7:
+                if len(title)>7:
                     streamings.append([name,url])
 
             elif name=='amazon':
@@ -79,17 +77,11 @@ def checkLinks(links,names):
                         streamings.append(['primevideo',newUrl])
                         flag=1
 
+            elif name=='crunchyroll':
+                streamings.append(['crunchyroll',url])
 
-        if name2=='crunchyroll':
-            search='https://www.crunchyroll.com/pt-br/search?q='+english
-            print(search)
-            req= r.get(search)
-            content2=req.content
-            soup2=BeautifulSoup(content2,'html.parser')
-            flag=0
-
-            for elem2 in soup2.findAll('a tabindex'):
-                print(elem2)
+        if name2 == 'crunchyroll':
+            streamings.append(['crunchyroll', url])
 
     return streamings
 
@@ -100,14 +92,14 @@ def findAnimes(url,query,variables):
     infos = resp_dic['data']['Page']['media']
     out=['MANGA','ONE_SHOT','NOVEL','MUSIC']
     for elem in infos:
-        format=elem['format']
-        if format not in out and 'Hentai' not in elem['genres']:
+        form=elem['format']
+        if form not in out and 'Hentai' not in elem['genres']:
             romaji = elem['title']['romaji']
             english = elem['title']['english']
             print('Nome:', romaji)
             print('Alternativo:', english)
             print('Gêneros:', elem['genres'])
-            print('Formato:',format)
+            print('Formato:',form)
             print('Você pode assistir em:')
             streamings = checkLinks(elem['externalLinks'],[romaji,english])
             if streamings != []:
@@ -120,6 +112,7 @@ def findAnimes(url,query,variables):
             print('\n')
 
 if __name__ == '__main__':
+    animes_url=[]
     query = '''
         query ($id: Int, $page: Int, $perPage: Int, $search: String) 
         {
@@ -156,18 +149,19 @@ if __name__ == '__main__':
     while True:
         print('Digite o nome do anime que deseja pesquisar:')
         anime_Name=input()
-        if anime_Name=='0':
+
+        if anime_Name=='-1':
             break
-        #anime_Name='SPY×FAMILY Part 2'
+
         variables = {
             'search': anime_Name
         }
         findAnimes(url,query,variables)
         print('Streamings alternativos:')
-        animes=findAnimes2(anime_Name)
-        if animes!=[]:
-            for anime in animes:
-                print(anime,'\n')
+        animes_url = get_Links(anime_Name)
+        if animes_url != []:
+            for anime in animes_url:
+                print(anime, '\n')
 
         else:
             print('Não há animes disponíveis para esssa pesquisa')
